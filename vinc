@@ -1,0 +1,9 @@
+#!/usr/bin/env ruby
+# vinc -- find which files include the include file(s) given as argument(s)
+
+homeDir = Dir.home
+vxWorksTgt = "#{homeDir}/Code/Wide/ct-cau-fsw/vendor/vxworks-6.8/target"
+
+ARGV.each do |arg|
+  system "find #{vxWorksTgt} -name \*.h | xargs grep #{arg} | grep -e '#include'"
+end

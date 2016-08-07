@@ -1,0 +1,9 @@
+#!/usr/bin/env ruby
+# vdoth -- find <name>.h file somewhere in vxworks-6.8 include file dirs"
+
+homeDir = Dir.home
+vxWorksTgt = "#{homeDir}/Code/Wide/ct-cau-fsw/vendor/vxworks-6.8/target"
+
+ARGV.each do |arg|
+  system "find #{vxWorksTgt} -name #{arg}.h"
+end

@@ -1,0 +1,9 @@
+#!/usr/bin/env ruby
+# vdecl -- find all extern declarations in vxworks-6.8 include files.
+
+homeDir = Dir.home
+vxWorksTgt = "#{homeDir}/Code/Wide/ct-cau-fsw/vendor/vxworks-6.8/target"
+
+ARGV.each do |arg|
+  system "find #{vxWorksTgt} -name \*.h | xargs grep #{arg} | grep extern"
+end

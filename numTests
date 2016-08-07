@@ -1,0 +1,29 @@
+#!/usr/bin/env ruby
+# numTests -- display number of test cases in all test files
+
+homeDir = Dir.home
+
+#defTestDir = "#{homeDir}/dev/ct-cau-fsw/test"
+defTestDir = "./test"
+
+testDir = ARGV.shift || defTestDir
+
+tests = Array.new
+
+Dir["#{testDir}/*.c"].each do |testFile|
+  File.open "#{testFile}" do |file|
+    testCnt = 0
+    file.each_line do |line|
+      if line =~ /TEST_/
+        testCnt += 1
+      end
+    end
+    tests << [ testCnt, testFile ]
+  end
+end
+
+tests.sort_by! { |t| t[0] }
+
+tests.each do |c,n|
+  printf "%4d %s\n", c, n
+end

@@ -1,0 +1,5 @@
+#
+# vbox -- Log into vbox machine 
+
+echo "Password is vbox"
+ssh -Y vbox@10.20.50.21

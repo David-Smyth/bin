@@ -1,0 +1,10 @@
+#!/usr/bin/env ruby
+# vman -- display vxworks man page
+
+homeDir = Dir.home
+vxWorksMan = "#{homeDir}/Code/Wide/ct-cau-fsw/vendor/vxworks-6.8/man"
+ARGV.each do |arg|
+  Dir["#{vxWorksMan}/cat*/#{arg}.*"].each do |manPg|
+    system "more #{manPg}"
+  end
+end

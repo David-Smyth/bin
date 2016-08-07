@@ -1,0 +1,5 @@
+#
+# ub -- Log into ubunto machine for access to CAU compile environment
+
+echo "Password is reverse"
+ssh -X ubuntu@10.20.50.22

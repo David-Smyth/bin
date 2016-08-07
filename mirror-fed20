@@ -1,0 +1,28 @@
+#!/bin/sh
+# mirror-script.sh
+# hal canary
+DATE=`/bin/date +%Y-%m-%d`
+OUTDIR='/tmp'
+MIRROR=/Users/david.smyth/Code/Linux/Fedora20Mirror
+
+# To get the best mirror, check this out: 
+# https://mirrors.fedoraproject.org/publiclist/Fedora/20/x86_64/
+
+[ -d $OUTDIR ] || mkdir -p $OUTDIR
+OUTFILE=$OUTDIR/mirror-output-$DATE.txt
+
+nice rsync --verbose --progress \
+   --stats --archive --partial \
+   --exclude development/ \
+   --exclude test/ \
+   --exclude 1/SRPMS/ \
+   --exclude 1/i386/iso/yarrow-SRPMS-disc1.iso \
+   --exclude 1/i386/iso/yarrow-SRPMS-disc2.iso \
+   --exclude 1/i386/iso/yarrow-SRPMS-disc3.iso \
+   --exclude 1/i386/debug/ \
+   --exclude updates/testing/ \
+   --exclude updates/1/SRPMS \
+   --exclude updates/1/i386/SRPMS/ \
+   --exclude updates/1/i386/debug/ \
+   fedora.mirror.nexicom.net::fedora/core/ $MIRROR/fedora/core/ \
+   >> $OUTFILE

@@ -1,0 +1,9 @@
+#!/usr/bin/env ruby
+# vsym -- find vxworks include file with symbol(s) specified as args(s)
+
+homeDir = Dir.home
+vxWorksTgt = "#{homeDir}/Code/Wide/ct-cau-fsw/vendor/vxworks-6.8/target"
+
+ARGV.each do |arg|
+  system "find #{vxWorksTgt} -name \*.h | xargs grep #{arg}"
+end
