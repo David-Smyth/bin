@@ -1,0 +1,32 @@
+#!/usr/bin/env ruby
+
+require 'fileutils'
+
+num_nefs = num_jpgs = num_missing_jpgs = num_delete_fail = 0
+
+Dir.glob("*.NEF") { |name_dot_nef|
+  name_dot = File.basename(name_dot_nef,"NEF")
+  name_dot_jpg = name_dot + "JPG"
+  puts "NEF file #{name_dot_nef}"
+  puts "basename #{name_dot}"
+  puts "JPG file #{name_dot_jpg}"
+  num_nefs = num_nefs + 1
+  if File.file?(name_dot_jpg)
+    num_jpgs = num_jpgs + 1
+    begin
+      File.delete(name_dot_jpg)
+    rescue
+      puts "Could not delete #{name_dot_jpg}"
+      num_delete_fail = num_delete_fail + 1
+    end
+  else
+    num_missing_jpgs = num_missing_jpgs + 1
+    puts "No JPG found for #{name_dot_nef}"
+  end
+}
+
+puts "Number of NEF files: #{num_nefs}"
+puts "Number of JPG files: #{num_jpgs}"
+puts "Missing   JPG files: #{num_missing_jpgs}"
+puts "Weird!" if num_nefs != num_jpgs+num_missing_jpgs
+puts "Could not delete #{num_delete_fail} JPG files!!"
