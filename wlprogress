@@ -1,0 +1,16 @@
+#!/usr/bin/env ruby
+# wlprogress: identify starts and stops of each module for a year
+
+DEBUG = true
+
+# Lessons that indicate beginning or end of each module.
+# Constant, so value is frozen
+LESSONS = [1, 12, 13, 22, 23, 31, 32, 38].freeze
+
+if DEBUG
+  start_or_end = 'start'
+  LESSONS.each do |lesson|
+    puts "lesson #{lesson} is a #{start_or_end}"
+    start_or_end = (start_or_end == 'start' ? 'end' : 'start')
+  end
+end
