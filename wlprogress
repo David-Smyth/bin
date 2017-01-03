@@ -1,16 +1,200 @@
 #!/usr/bin/env ruby
 # wlprogress: identify starts and stops of each module for a year
 
-DEBUG = true
+# Debugging:
+# put 'binding.pry' where you want an interactive debugger to start
+require 'pry'
+
+##########################
+# Standard option parsing
+#
+require 'optparse'
+
+options = {
+  debug: false,
+  top: '/Users/david.smyth/Code/Westlawn/_LESSON REPTS MASTER FILES/',
+  csv: false
+}
+
+optparse = OptionParser.new do |opts|
+  opts.banner = 'Usage: wlprogress [options]'
+  opts.on('-h', '--help', 'Show this help message') do ||
+    puts opts
+  end
+  opts.on('-d', '--debug', 'Enable debugging.') do ||
+    options[:debug] = true
+  end
+  opts.on('-v', '--verbose', 'Enable verbose human readable output.') do ||
+    options[:verbose] = true
+  end
+  opts.on('-t', '--top FOLDER', 'Top folder of student lesson files.') do |tf|
+    options[:top] = tf
+  end
+  opts.on('-c', '--csv', 'Generate CSV file.') do ||
+    options[:csv] = true
+  end
+end
+
+begin
+  optparse.parse!
+  # Add symbols to 'required' array for each required argument
+  required = [:top]
+  missing = required.select { |reqd| options[reqd].nil? }
+  raise OptionParser::MissingArgument, missing.join(', ') unless missing.empty?
+  raise OptionParser::InvalidOption, ARGV unless ARGV.empty?
+rescue OptionParser::MissingArgument, OptionParser::InvalidOption => e
+  puts e
+  puts optparse
+  exit
+end
+
+DEBUG = options[:debug].freeze
+VERBOSE = options[:verbose].freeze
+TOP = options[:top].freeze
+CSV = options[:csv].freeze
+#
+# End of standard option parsing
+################################
 
 # Lessons that indicate beginning or end of each module.
 # Constant, so value is frozen
-LESSONS = [1, 12, 13, 22, 23, 31, 32, 38].freeze
+START_OR_END_LESSONS = [1, 12, 13, 22, 23, 31, 32, 38].freeze
+LESSONS = (1..38).to_a.freeze
+
+# File name patterns for fnmatch that match student lesson files
+# for each of the start or endlessons.
+pats = []
+START_OR_END_LESSONS.each do |l|
+  ls = format('%02d', l)
+  pats[l] = "[A-Z][A-Z][A-Z] [0-9][0-9][0-9][0-9][0-9] YD #{ls}*.doc*"
+end
+PATS = pats.freeze
+
+# File name pattern for fnmatch that matches student IDs.
+STUDENT_PAT = '[A-Z][A-Z][A-Z] [0-9][0-9][0-9][0-9][0-9] '.freeze
 
 if DEBUG
   start_or_end = 'start'
-  LESSONS.each do |lesson|
-    puts "lesson #{lesson} is a #{start_or_end}"
-    start_or_end = (start_or_end == 'start' ? 'end' : 'start')
+  START_OR_END_LESSONS.each do |l|
+    puts "lesson #{format('%02d', l)} is a #{start_or_end} #{PATS[l]}"
+    start_or_end = (start_or_end == 'start' ? 'end  ' : 'start')
+  end
+  puts "Options: #{options}"
+  puts "ARGV: #{ARGV}"
+end
+
+require 'pathname'
+top = Pathname.new(options[:top])
+subdirs = top.children.select(&:directory?)
+
+if DEBUG
+  puts "top folder name is #{top}"
+  puts subdirs
+end
+
+# For each year, count number of times an important lesson
+# has been taken. Count only unique students, as a given
+# student may submit a lesson multiple times, especially
+# for the finals for each module.
+# Also, count all unique students that submitted ANY lesson
+# in the year.
+# Also, count total exams submitted in a year.
+
+total_lessons_taken = {}
+start_or_end_lessons_taken = {}
+unique_students = {}
+
+def lesson_pattern(lesson)
+  "[A-Z][A-Z][A-Z] [0-9][0-9][0-9][0-9][0-9] YD #{lesson}*.doc*"
+end
+
+def student_pattern
+  '[A-Z][A-Z][A-Z] [0-9][0-9][0-9][0-9][0-9] *'
+end
+
+def count_unique_students(dir)
+  dir.children.each do |f|
+    fname = f.basename.to_s
+    student = fname[/[A-Z][A-Z][A-Z] [0-9][0-9][0-9][0-9][0-9] /]
+    if student
+      student.strip!
+      unique_students[year][student] = true
+    end
+  end
+  puts "unique_students: #{unique_students[year].count}" if VERBOSE
+end
+
+def count_lessons_taken(dir, lesson)
+  students = {}
+  dir.children.each do |f|
+    student = f.basename.fnmatch(PATS[lesson])
+    if student
+      student.strip!
+      students[student] = true
+    end
   end
 end
+
+def count_start_or_end_lessons_taken(dir)
+  START_OR_END_LESSONS.each do |lesson|
+    puts "file name pattern: #{PATS[lesson]}" if DEBUG
+    student_taking_lesson = 0
+    dups = 0
+    students = {}
+    dir.children.each do |f|
+      student = f.basename.fnmatch(PATS[lesson])
+      if student
+        student.strip!
+        students[student] = true
+      end
+    end
+    lessons_taken[year][lesson] = students.count
+    puts lessons_taken if DEBUG
+    puts "YD #{lesson}: {students.count} students." if VERBOSE
+  end
+end
+
+subdirs.each do |dir|
+  year = dir.to_s[-4, 4]
+  total_lessons_taken[year] = dir.children.length
+  unique_students[year] ||= {}
+  start_or_end_lessons_taken[year] ||= {}
+  puts "Year #{year}" if VERBOSE
+  puts "Total lessons: #{total_lessons_taken[year]}" if VERBOSE
+  puts "dir #{dir} is a #{dir.class}" if DEBUG
+  count_unique_students dir
+  count_start_or_end_lessons_taken dir
+  total_students_taking_lesson += student_taking_lesson
+end
+
+#binding.pry if DEBUG
+
+if CSV
+  years = []
+  lessons_taken.each do |y,l|
+    years << y
+  end
+  years.reverse!
+  header = "%20s,%4s" % ["",""]
+  years.each do |y|
+    cell = "%4d" % y
+    header += ", #{cell}"
+  end
+  puts header
+  soe = "Starts"
+  mod = 1
+  START_OR_END_LESSONS.each do |l|
+    first_column = "Module %1d %-11s" % [mod, soe]
+    line = "#{first_column}, "
+    soe = (soe == "Starts" ? "Completions" : "Starts")
+    mod = (soe == "Starts" ? mod + 1 : mod )
+    line += " %02d" % l
+    years.each do |y|
+      column = "%4d" % lessons_taken[y][l]
+      line += ", #{column}"
+    end
+    puts line
+  end
+end
+
+puts 'Done.' if VERBOSE
