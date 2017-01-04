@@ -90,6 +90,7 @@ class Lessons
   end
 
   def test
+    puts "Testing class #{self.class}"
     inst = Lessons.new
     cur_mod = 0
     inst.all.each do |l|
@@ -125,7 +126,6 @@ require 'pathname'
 class StudentsTakingExamsSummaryCSV
   def initialize( top = TOP )
     @top = Pathname.new(top)
-    traverse_subdirs
   end
 
   def traverse_subdirs
@@ -136,13 +136,15 @@ class StudentsTakingExamsSummaryCSV
   end
 
   def extract_year(path)
-    year = dir.to_s[-4, 4]
+    year = path.to_s[-4, 4].to_i
+    puts "extracting year #{year}" if TEST or VERBOSE
     return year if 2003 <= year && year <= 2017
   rescue
     raise "Invalid directory name: #{path}  Must end in 4 digit year."
   end
 
   def test
+    puts "Testing class #{self.class}"
     inst = StudentsTakingExamsSummaryCSV.new
     inst.traverse_subdirs
   end
@@ -155,9 +157,11 @@ class LessonFilesDir
 end
 
 class ProcessDirsMakeCsv
-  def initialize end
+  def initialize
+  end
 
-  def process_dir(top) end
+  def process_dir(top)
+  end
 end
 
 if __FILE__ == $PROGRAM_NAME
@@ -166,6 +170,8 @@ if __FILE__ == $PROGRAM_NAME
   if TEST
     lessons = Lessons.new
     lessons.test
+    csv = StudentsTakingExamsSummaryCSV.new
+    csv.test
   end
 
   if CSV
