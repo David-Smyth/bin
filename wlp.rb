@@ -19,7 +19,7 @@ options = {
   debug: false,
   verbose: false,
   top: '/Users/david.smyth/Code/Westlawn/_LESSON REPTS MASTER FILES/',
-  long_csv: false
+  full_csv: false
 }
 
 optparse = OptionParser.new do |opts|
@@ -61,20 +61,29 @@ TEST = options[:test].freeze
 DEBUG = options[:debug].freeze
 VERBOSE = options[:verbose].freeze
 TOP = options[:top].freeze
-CSV = !options[:long_csv].freeze
-LONG = options[:long_csv].freeze
+FULL = options[:long_csv].freeze
 #
 # End of standard option parsing
 ################################
 
+# This class contains information about all the lessons
+# in the Westlawn Yacht Design Course.
+#
 class Lessons
-
-  attr_reader :mod_start, :mod_final, :all
+  attr_reader :all
 
   def initialize
+    init_start_final_all
+    init_module_map
+  end
+
+  def init_start_final_all
     @mod_start = [1, 13, 23, 32].freeze
     @mod_final = [12, 22, 31, 38].freeze
     @all = (1..38).to_a.freeze
+  end
+
+  def init_module_map
     @module = []
     @module[0] = [].freeze
     @module[1] = (1..12).to_a.freeze
@@ -84,112 +93,150 @@ class Lessons
   end
 
   def module(lesson)
-    @module.each_with_index do |mod,inx|
+    @module.each_with_index do |mod, inx|
       return inx if mod.include? lesson
     end
-    raise ArgumentError.new("Lesson #{lesson} is outside range of 1..38")
+    raise ArgumentError, "Lesson #{lesson} is outside range of 1..38"
+  end
+
+  def start_or_final?(lesson)
+    start?(lesson) || final?(lesson)
+  end
+
+  def start?(lesson)
+    @mod_start.include? lesson
+  end
+
+  def final?(lesson)
+    @mod_final.include? lesson
   end
 
   def self.test
-    puts "Testing class #{self.name}"
+    puts "Testing class #{name}"
     inst = Lessons.new
-    cur_mod = 0
     inst.all.each do |l|
-      if inst.mod_start.include? l
-        cur_mod += 1
-        puts "lesson #{l} start of Module #{inst.module(l)}"
-      elsif inst.mod_final.include? l
-        puts "lesson #{l} final of Module #{inst.module(l)}"
-      else
-        puts "lesson #{l} is in Module #{cur_mod}"
-      end
-      if cur_mod != inst.module(l)
-        raise "wtf: cur_mod=#{cur_mod} but module(#{l}) is #{inst.module(l)}"
-      end
+      msg = "lesson #{l} in module #{inst.module(l)}"
+      msg += ' start' if inst.start?(l)
+      msg += ' final' if inst.final?(l)
+      puts msg
     end
   end
-
 end
 
+# This class generates a hash of student IDs representing all students that
+# submitted a given lesson within a given directory. A directory corresponds
+# to a year. Since a student may submit a given lesson several times, we
+# only count unique students.
+#
 class StudentsTakingExam
-  STUDENT_ID_PATTERN = '[A-Z][A-Z][A-Z] [0-9][0-9][0-9][0-9][0-9]'
-  def initialize(dir,lesson)
+  attr_reader :students
+
+  STUDENT_ID_PATTERN = '[A-Z][A-Z][A-Z] [0-9][0-9][0-9][0-9][0-9]'.freeze
+
+  def initialize(dir, lesson)
     @students = {}
-    @lesson_file_pattern_a = "#{STUDENT_ID_PATTERN} YD #{format('%02d',lesson)}*.doc*"
-    @lesson_file_pattern_b = "#{STUDENT_ID_PATTERN} YD #{lesson} *.doc*"
+    @pattern_a = "#{STUDENT_ID_PATTERN} YD #{format('%02d', lesson)}*.doc*"
+    @pattern_b = "#{STUDENT_ID_PATTERN} YD #{lesson} *.doc*"
 
     dir.children.each do |f|
       fp = f.basename
-      if fp.fnmatch?(@lesson_file_pattern_a) || fp.fnmatch?(@lesson_file_pattern_b)
-        student = fp.to_s[0,9]
-        puts "student #{student}" if TEST
+      if fp.fnmatch?(@pattern_a) || fp.fnmatch?(@pattern_b)
+        student = fp.to_s[0, 9]
         @students[student] = true
       end
     end
   end
 
   def length
-    return @students.length
+    @students.length
   end
 
   def self.test
-    puts "Testing class #{self.name}"
+    puts "Testing class #{name}"
     dir = Pathname.new("#{TOP}/LESSON REPTS 2003")
-    inst = self.new(dir, 1)
+    inst = new(dir, 1)
+    puts "students: #{inst.students}"
     puts "unique students taking lesson 1 in 2003: #{inst.length}"
   end
 end
 
-class StudentTakingExam
-end
+# This class is a spreadsheet with a header, and rows. Each row
+# contains the number of students taking a lesson for each year.
+# Columns are years. The first row is a header, the first two columns
+# describe the lesson (descriptive text and lesson number).
+#
+class StudentsTakingExamsCSV
+  YEARS = (2003..2016).freeze
+  LESSONS = (1..38).freeze
 
-class AnnualLessonsDir
-end
-
-
-class StudentsTakingExamsSummaryCSV
-  def initialize( top = TOP )
+  def initialize(top = TOP)
     @top = Pathname.new(top)
     @lessons = Lessons.new
-    @csv = []
+    @csv = {}
   end
 
   def traverse_subdirs
     subdirs = @top.children.select(&:directory?)
     subdirs.each do |dir|
       year = extract_year(dir)
-      @lessons.each do |lesson|
-        @csv[year][lesson] = StudentsTakingExam.new(dir, lesson)
+      @csv[year] = {}
+      @lessons.all.each do |lesson|
+        @csv[year][lesson] = StudentsTakingExam.new(dir, lesson).students.length
       end
     end
   end
 
+  def csv(full = false)
+    csv_header
+    @lessons.all.each do |ls|
+      csv_line(ls) if full || @lessons.start_or_final?(ls)
+    end
+  end
+
+  COL_0_1_FORMAT = '%-16s,%2s'.freeze
+  COL_N_FORMAT = ', %4d'.freeze
+
+  def csv_header
+    header = format(COL_0_1_FORMAT, '', '')
+    YEARS.each do |year|
+      header += format(COL_N_FORMAT, year)
+    end
+    puts header
+  end
+
+  def csv_line_decription(ls)
+    if @lessons.start? ls
+      "Module #{@lessons.module(ls)} start"
+    elsif @lessons.final? ls
+      "Module #{@lessons.module(ls)} final"
+    else
+      "Module #{@lessons.module(ls)}"
+    end
+  end
+
+  def csv_line(ls)
+    col0 = csv_line_decription(ls)
+    col1 = ls
+    line = format(COL_0_1_FORMAT, col0, col1)
+    YEARS.each do |year|
+      line += format(COL_N_FORMAT, @csv[year][ls])
+    end
+    puts line
+  end
+
   def extract_year(path)
     year = path.to_s[-4, 4].to_i
-    puts "extracting year #{year}" if TEST or VERBOSE
-    return year if 2003 <= year && year <= 2017
+    puts "extracting year #{year}" if TEST || DEBUG || VERBOSE
+    return year if YEARS.include? year
   rescue
     raise "Invalid directory name: #{path} Must end in 2003..2017"
   end
 
   def self.test
-    puts "Testing class #{self.name}"
-    inst = StudentsTakingExamsSummaryCSV.new
+    puts "Testing class #{name}"
+    inst = StudentsTakingExamsCSV.new
     inst.traverse_subdirs
-  end
-end
-
-class StudentsTakingExamsLongCSV
-end
-
-class LessonFilesDir
-end
-
-class ProcessDirsMakeCsv
-  def initialize
-  end
-
-  def process_dir(top)
+    inst.csv(false)
   end
 end
 
@@ -199,12 +246,11 @@ if __FILE__ == $PROGRAM_NAME
   if TEST
     Lessons.test
     StudentsTakingExam.test
-    StudentsTakingExamsSummaryCSV.test
-  end
-
-  if CSV
-    csv = StudentsTakingExamsSummaryCSV.new
-    puts csv
+    StudentsTakingExamsCSV.test
+  else
+    csv = StudentsTakingExamsCSV.new
+    csv.traverse_subdirs
+    csv.csv(FULL)
   end
 
   puts 'Done.' if VERBOSE
