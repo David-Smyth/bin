@@ -89,7 +89,7 @@ class Lessons
     raise ArgumentError.new("Lesson #{lesson} is outside range of 1..38")
   end
 
-  def test
+  def self.test
     puts "Testing class #{self.class}"
     inst = Lessons.new
     cur_mod = 0
@@ -143,7 +143,7 @@ class StudentsTakingExamsSummaryCSV
     raise "Invalid directory name: #{path}  Must end in 4 digit year."
   end
 
-  def test
+  def self.test
     puts "Testing class #{self.class}"
     inst = StudentsTakingExamsSummaryCSV.new
     inst.traverse_subdirs
@@ -168,10 +168,8 @@ if __FILE__ == $PROGRAM_NAME
   # This block will only run if the script is the main file,
   # and not when it is load'd or require'd
   if TEST
-    lessons = Lessons.new
-    lessons.test
-    csv = StudentsTakingExamsSummaryCSV.new
-    csv.test
+    Lessons.test
+    StudentsTakingExamsSummaryCSV.test
   end
 
   if CSV
