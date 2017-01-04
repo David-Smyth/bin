@@ -14,7 +14,9 @@ require 'pry'
 require 'optparse'
 
 options = {
+  test: false,
   debug: false,
+  verbose: false,
   top: '/Users/david.smyth/Code/Westlawn/_LESSON REPTS MASTER FILES/',
   long_csv: false
 }
@@ -23,6 +25,9 @@ optparse = OptionParser.new do |opts|
   opts.banner = 'Usage: wlprogress [options]'
   opts.on('-h', '--help', 'Show this help message') do ||
     puts opts
+  end
+  opts.on('-T', '--test', 'Test classes.') do ||
+    options[:test] = true
   end
   opts.on('-d', '--debug', 'Enable debugging.') do ||
     options[:debug] = true
@@ -51,6 +56,7 @@ rescue OptionParser::MissingArgument, OptionParser::InvalidOption => e
   exit
 end
 
+TEST = options[:test].freeze
 DEBUG = options[:debug].freeze
 VERBOSE = options[:verbose].freeze
 TOP = options[:top].freeze
@@ -104,6 +110,8 @@ class Lessons
 end
 
 class StudentsTakingExam
+  def initialize(year,lesson)
+  end  
 end
 
 class StudentTakingExam
@@ -112,17 +120,58 @@ end
 class AnnualLessonsDir
 end
 
+require 'pathname'
+
 class StudentsTakingExamsSummaryCSV
+  def initialize( top = TOP )
+    @top = Pathname.new(top)
+    traverse_subdirs
+  end
+
+  def traverse_subdirs
+    subdirs = @top.children.select(&:directory?)
+    subdirs.each do |dir|
+      year = extract_year(dir)
+    end
+  end
+
+  def extract_year(path)
+    year = dir.to_s[-4, 4]
+    return year if 2003 <= year && year <= 2017
+  rescue
+    raise "Invalid directory name: #{path}  Must end in 4 digit year."
+  end
+
+  def test
+    inst = StudentsTakingExamsSummaryCSV.new
+    inst.traverse_subdirs
+  end
 end
 
 class StudentsTakingExamsLongCSV
 end
 
-class ProcessDirMakeCsv
-  lessons = Lessons.new
-  if DEBUG
-    lessons.test
-  end
+class LessonFilesDir
 end
 
-puts 'Done.' if VERBOSE
+class ProcessDirsMakeCsv
+  def initialize end
+
+  def process_dir(top) end
+end
+
+if __FILE__ == $PROGRAM_NAME
+  # This block will only run if the script is the main file,
+  # and not when it is load'd or require'd
+  if TEST
+    lessons = Lessons.new
+    lessons.test
+  end
+
+  if CSV
+    csv = StudentsTakingExamsSummaryCSV.new
+    puts csv
+  end
+
+  puts 'Done.' if VERBOSE
+end
