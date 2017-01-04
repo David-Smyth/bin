@@ -4,6 +4,7 @@
 # Debugging:
 # put 'binding.pry' where you want an interactive debugger to start
 require 'pry'
+require 'pathname'
 
 ##########################
 # Standard option parsing
@@ -90,7 +91,7 @@ class Lessons
   end
 
   def self.test
-    puts "Testing class #{self.class}"
+    puts "Testing class #{self.name}"
     inst = Lessons.new
     cur_mod = 0
     inst.all.each do |l|
@@ -111,8 +112,32 @@ class Lessons
 end
 
 class StudentsTakingExam
-  def initialize(year,lesson)
-  end  
+  STUDENT_ID_PATTERN = '[A-Z][A-Z][A-Z] [0-9][0-9][0-9][0-9][0-9]'
+  def initialize(dir,lesson)
+    @students = {}
+    @lesson_file_pattern_a = "#{STUDENT_ID_PATTERN} YD #{format('%02d',lesson)}*.doc*"
+    @lesson_file_pattern_b = "#{STUDENT_ID_PATTERN} YD #{lesson} *.doc*"
+
+    dir.children.each do |f|
+      fp = f.basename
+      if fp.fnmatch?(@lesson_file_pattern_a) || fp.fnmatch?(@lesson_file_pattern_b)
+        student = fp.to_s[0,9]
+        puts "student #{student}" if TEST
+        @students[student] = true
+      end
+    end
+  end
+
+  def length
+    return @students.length
+  end
+
+  def self.test
+    puts "Testing class #{self.name}"
+    dir = Pathname.new("#{TOP}/LESSON REPTS 2003")
+    inst = self.new(dir, 1)
+    puts "unique students taking lesson 1 in 2003: #{inst.length}"
+  end
 end
 
 class StudentTakingExam
@@ -121,17 +146,21 @@ end
 class AnnualLessonsDir
 end
 
-require 'pathname'
 
 class StudentsTakingExamsSummaryCSV
   def initialize( top = TOP )
     @top = Pathname.new(top)
+    @lessons = Lessons.new
+    @csv = []
   end
 
   def traverse_subdirs
     subdirs = @top.children.select(&:directory?)
     subdirs.each do |dir|
       year = extract_year(dir)
+      @lessons.each do |lesson|
+        @csv[year][lesson] = StudentsTakingExam.new(dir, lesson)
+      end
     end
   end
 
@@ -140,11 +169,11 @@ class StudentsTakingExamsSummaryCSV
     puts "extracting year #{year}" if TEST or VERBOSE
     return year if 2003 <= year && year <= 2017
   rescue
-    raise "Invalid directory name: #{path}  Must end in 4 digit year."
+    raise "Invalid directory name: #{path} Must end in 2003..2017"
   end
 
   def self.test
-    puts "Testing class #{self.class}"
+    puts "Testing class #{self.name}"
     inst = StudentsTakingExamsSummaryCSV.new
     inst.traverse_subdirs
   end
@@ -169,6 +198,7 @@ if __FILE__ == $PROGRAM_NAME
   # and not when it is load'd or require'd
   if TEST
     Lessons.test
+    StudentsTakingExam.test
     StudentsTakingExamsSummaryCSV.test
   end
 
