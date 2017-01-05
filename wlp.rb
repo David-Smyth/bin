@@ -160,6 +160,38 @@ class StudentsTakingExam
   end
 end
 
+# This class generates a hash of student IDs representing all students
+# that submitted any exam in a given year.
+#
+class StudentsEnrolledInYear
+  attr_reader :students
+
+  def initialize(dir)
+    @students = {}
+    @pattern_c = "#{StudentsTakingExam::STUDENT_ID_PATTERN} YD *.doc*"
+
+    dir.children.each do |f|
+      fp = f.basename
+      if fp.fnmatch? @pattern_c
+        student = fp.to_s[0, 9]
+        @students[student] = true
+      end
+    end
+  end
+
+  def length
+    @students.length
+  end
+
+  def self.test
+    puts "Testing class #{name}"
+    dir = Pathname.new("#{TOP}/LESSON REPTS 2003")
+    inst = new(dir)
+    puts "students: #{inst.students}"
+    puts "unique students enrolled in 2003: #{inst.length}"
+  end
+end
+
 # This class is a spreadsheet with a header, and rows. Each row
 # contains the number of students taking a lesson for each year.
 # Columns are years. The first row is a header, the first two columns
@@ -173,6 +205,7 @@ class StudentsTakingExamsCSV
     @top = Pathname.new(top)
     @lessons = Lessons.new
     @csv = {}
+    @enrollment = {}
   end
 
   def traverse_subdirs
@@ -181,8 +214,9 @@ class StudentsTakingExamsCSV
       year = extract_year(dir)
       @csv[year] = {}
       @lessons.all.each do |lesson|
-        @csv[year][lesson] = StudentsTakingExam.new(dir, lesson).students.length
+        @csv[year][lesson] = StudentsTakingExam.new(dir, lesson).length
       end
+      @enrollment[year] = StudentsEnrolledInYear.new(dir).length
     end
   end
 
@@ -191,6 +225,7 @@ class StudentsTakingExamsCSV
     @lessons.all.each do |ls|
       csv_line(ls) if full || @lessons.start_or_final?(ls)
     end
+    csv_total_enrollment
   end
 
   COL_0_1_FORMAT = '%-16s,%2s'.freeze
@@ -224,6 +259,14 @@ class StudentsTakingExamsCSV
     puts line
   end
 
+  def csv_total_enrollment
+    line = format(COL_0_1_FORMAT, 'active students', '')
+    YEARS.each do |year|
+      line += format(COL_N_FORMAT, @enrollment[year])
+    end
+    puts line
+  end
+
   def extract_year(path)
     year = path.to_s[-4, 4].to_i
     puts "extracting year #{year}" if TEST || DEBUG || VERBOSE
@@ -246,6 +289,7 @@ if __FILE__ == $PROGRAM_NAME
   if TEST
     Lessons.test
     StudentsTakingExam.test
+    StudentsEnrolledInYear.test
     StudentsTakingExamsCSV.test
   else
     csv = StudentsTakingExamsCSV.new
