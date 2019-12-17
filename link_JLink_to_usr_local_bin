@@ -1,0 +1,67 @@
+#!/usr/bin/env ruby
+# link JLink applications into /usr/local/bin
+require 'pry'
+
+dbug = false
+JDIR = '/Applications/SEGGER/JLink'
+BDIR = '/usr/local/bin'
+
+Dir.chdir JDIR do
+  apps = Dir['*.app'].sort ; puts "#{apps.length} apps: #{apps}" if dbug
+  exes = Dir['*Exe'].sort  ; puts "#{exes.length} exes: #{exes}" if dbug
+
+  # Build list of commands to be put into /usr/local/bin.
+  # There might be duplicates: many Exe invoke (open) the .app
+  # Therefore, first do the apps, then add Exe files only if we
+  # have not already seen the .app file.
+  cmds = []
+  apps.each do |a|
+    app = a.sub /\.app$/, ''  # Remove trailing '.app'
+    cmds << app unless cmds.include? app
+  end
+  exes.each do |x|
+    exe = x.sub /Exe$/, ''    # Remove trailing 'Exe'
+    cmds << exe unless cmds.include? exe
+  end
+  cmds.sort! ; puts "#{cmds.length} cmds: #{cmds}" if dbug
+
+  cmds.each do |cmd_name|
+    app_name = "#{cmd_name}.app";
+    exe_name = "#{cmd_name}Exe";
+    bin_name = "#{BDIR}/#{cmd_name}"
+
+    # Get rid of old links in /usr/local/bin
+    [cmd_name, app_name, exe_name].each do |n|
+      del_this = "#{BDIR}/#{n}"
+      begin
+        if dbug
+          #puts "File.delete #{n} if File.exist? #{n} #{File.exist? n} || File.lstat(#{n}).symlink? #{File.lstat(n).symlink?}"
+          puts "File.delete #{del_this}"
+        else
+          File.delete del_this
+        end
+      rescue => e
+        if dbug
+          puts "File #{del_this}: #{e}"
+        end
+      end
+    end
+
+    # Make link from bin_name to the .app or Exe in JDIR
+    #binding.pry
+    puts "#{cmd_name} #{app_name} app? #{apps.include? app_name} #{exe_name} exe? #{exes.include? exe_name}" if dbug
+    if apps.include? app_name
+      tgt_name = "#{JDIR}/Contents/MacOS/#{cmd_name}Exe"
+    elsif exes.include? exe_name
+      tgt_name = "#{JDIR}/#{cmd_name}Exe"
+    else
+      tgt_name = "OH NO MR BILL!"
+      dbug = true
+    end
+    if dbug
+      puts "File.symlink #{tgt_name}, #{bin_name}"
+    else
+      File.symlink tgt_name, bin_name
+    end
+  end
+end

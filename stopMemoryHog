@@ -1,1 +1,18 @@
-kill -9 $(ps aux | grep Books | awk '{print $2}')
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+#kill -9 $(ps aux | grep  | awk '{print $2}')
+ 
+DEBUG = true
+
+EVIL = 'DiskSpaceEfficiency'
+GREP_EVIL = "grep #{EVIL}"
+
+(`ps aux | #{GREP_EVIL}`).split(/\n/).each do |line|
+  if line.include? GREP_EVIL
+    puts "ignoring: #{line}" if DEBUG
+  else
+    `kill -9 #{line.split[1]}`
+  end
+end
+
